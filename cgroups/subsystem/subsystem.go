@@ -23,4 +23,8 @@ type Subsystem interface {
 	RemoveCgroup(path string) error
 }
 
-var SubsystemsInstance = []Subsystem{}
+var SubsystemsInstance = []Subsystem{
+	&MemorySubSystem{},
+	&CPUSubSystem{},
+	&CPUSetSubSystem{},
+}

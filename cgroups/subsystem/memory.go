@@ -7,16 +7,16 @@ import (
 	"strconv"
 )
 
-// MemorySubsystem memory大小限制的subsystem实现
-type MemorySubsystem struct {
+// MemorySubSystem memory大小限制的subsystem实现
+type MemorySubSystem struct {
 }
 
-func (ms *MemorySubsystem) Name() string {
+func (ms *MemorySubSystem) Name() string {
 	return "memory"
 }
 
 // Set 对cgroup设置内存大小限制
-func (ms *MemorySubsystem) Set(cgroupPath string, res *ResourceConfig) error {
+func (ms *MemorySubSystem) Set(cgroupPath string, res *ResourceConfig) error {
 	if subsystemCgroupPath, err := GetCgroupPath(ms.Name(), cgroupPath, true); err != nil {
 		return err
 	} else {
@@ -31,12 +31,12 @@ func (ms *MemorySubsystem) Set(cgroupPath string, res *ResourceConfig) error {
 }
 
 // AddProcess 添加进程到该subsystem
-func (ms *MemorySubsystem) AddProcess(cgroupPath string, pid int) error {
+func (ms *MemorySubSystem) AddProcess(cgroupPath string, pid int) error {
 	if subsystemCgroupPath, err := GetCgroupPath(ms.Name(), cgroupPath, false); err != nil {
 		return err
 	} else {
-		// 同样操作，将进程的 pid 写入对应目录中的 'task' 文件
-		if err = os.WriteFile(path.Join(subsystemCgroupPath, "task"), []byte(strconv.Itoa(pid)), 0644); err != nil {
+		// 同样操作，将进程的 pid 写入对应目录中的 'tasks' 文件
+		if err = os.WriteFile(path.Join(subsystemCgroupPath, "tasks"), []byte(strconv.Itoa(pid)), 0644); err != nil {
 			return fmt.Errorf("cgroup add process fail: %v", err)
 		}
 	}
@@ -44,7 +44,7 @@ func (ms *MemorySubsystem) AddProcess(cgroupPath string, pid int) error {
 }
 
 // RemoveCgroup 使用os.Remove移除整个cgroup文件夹，相当于删除group
-func (ms *MemorySubsystem) RemoveCgroup(cgroupPath string) error {
+func (ms *MemorySubSystem) RemoveCgroup(cgroupPath string) error {
 	if subsystemCgroupPath, err := GetCgroupPath(ms.Name(), cgroupPath, false); err != nil {
 		return err
 	} else {
