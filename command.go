@@ -1,6 +1,7 @@
 package main
 
 import (
+	"MiniDocker/cgroups/subsystem"
 	"MiniDocker/container"
 	"MiniDocker/dockerCommand"
 	"errors"
@@ -17,6 +18,18 @@ var runCommand = cli.Command{
 			Name:  "it",
 			Usage: "open an interactive tty(pseudo terminal)", // 打开交互式tty
 		},
+		&cli.StringFlag{
+			Name:  "m",
+			Usage: "limit the memory",
+		},
+		&cli.StringFlag{
+			Name:  "cpu",
+			Usage: "limit the cpu amount",
+		},
+		&cli.StringFlag{
+			Name:  "cpushare",
+			Usage: "limit the cpu share",
+		},
 	},
 	/*
 		run 命令执行的函数
@@ -27,13 +40,25 @@ var runCommand = cli.Command{
 		if args.Len() == -1 {
 			return errors.New("missing container command")
 		}
-		containerCmd := args.Get(-1) // container command
+
+		// 得到容器起始命令
+		containerCmd := make([]string, args.Len())
+		for index, cmd := range args.Slice() {
+			containerCmd[index] = cmd
+		}
 
 		// check "-it"
 		tty := context.Bool("it")
 
+		// 得到资源配置
+		resourceConfig := subsystem.ResourceConfig{
+			MemoryLimit: context.String("m"),
+			CPUShare:    context.String("cpushare"),
+			CPUSet:      context.String("cpu"),
+		}
+
 		// 启动函数
-		dockerCommand.Run(tty, containerCmd)
+		dockerCommand.Run(tty, containerCmd, &resourceConfig)
 
 		return nil
 	},
@@ -50,8 +75,6 @@ var initCommand = cli.Command{
 	*/
 	Action: func(context *cli.Context) error {
 		logrus.Infof("Start initating...")
-		containerCmd := context.Args().Get(0)
-		logrus.Infof("container command: %v", containerCmd)
-		return container.InitProcess(containerCmd, nil)
+		return container.InitProcess()
 	},
 }
