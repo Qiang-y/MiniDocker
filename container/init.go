@@ -31,10 +31,10 @@ func InitProcess() error {
 	defaultMountFlags := syscall.MS_NOEXEC | syscall.MS_NOSUID | syscall.MS_NODEV
 
 	// mount, 将默认文件系统类型的空文件系统挂载到根目录
-	//if err := syscall.Mount("", "/", "", syscall.MS_PRIVATE|syscall.MS_REC, ""); err != nil {
-	//	logrus.Errorf("mount / fails: %v", err)
-	//	return err
-	//}
+	if err := syscall.Mount("", "/", "", syscall.MS_PRIVATE|syscall.MS_REC, ""); err != nil {
+		logrus.Errorf("mount / fails: %v", err)
+		return err
+	}
 	// mount proc, 将proc文件系统类型的proc文件系统挂载到/proc目录
 	err := syscall.Mount("proc", "/proc", "proc", uintptr(defaultMountFlags), "")
 	if err != nil {
