@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"syscall"
 )
@@ -16,29 +17,20 @@ InitProcess 是在容器内部执行的，执行到此容器所在进程已经�
 需要mount / 要指定为 private ，否则容器内proc会使用外面的proc，即使是在不同的namespace
 */
 func InitProcess() error {
+	// 验证是否处于独立的挂载命名空间
+	if err := verifyMountNamespace(); err != nil {
+		return err
+	}
+
 	// 获取命令参数
 	containerCmd := readCommand()
 	if containerCmd == nil || len(containerCmd) == 0 {
 		return fmt.Errorf("init process fails, containerCmd is nil")
 	}
 
-	/*
-		mount 命令的 flags参数可以设置选项以控制挂载行为
-		MS_NOEXEC：禁止在该文件系统上执行程序
-		MS_NOSUID: 禁止在该文件系统上运行 setuid 或 setgid 程序
-		MS_NODEV: 禁止在该文件系统上访问设备文件
-	*/
-	defaultMountFlags := syscall.MS_NOEXEC | syscall.MS_NOSUID | syscall.MS_NODEV
-
-	// mount, 将默认文件系统类型的空文件系统挂载到根目录
-	if err := syscall.Mount("", "/", "", syscall.MS_PRIVATE|syscall.MS_REC, ""); err != nil {
-		logrus.Errorf("mount / fails: %v", err)
+	if err := setUpMount(); err != nil {
+		logrus.Errorf("initProcess setUpMount fails: %v", err)
 		return err
-	}
-	// mount proc, 将proc文件系统类型的proc文件系统挂载到/proc目录
-	err := syscall.Mount("proc", "/proc", "proc", uintptr(defaultMountFlags), "")
-	if err != nil {
-		logrus.Errorf("mount /proc fails: %v", err)
 	}
 	//argv := []string{containerCmd}
 
@@ -61,6 +53,105 @@ func InitProcess() error {
 	}
 
 	return nil
+}
+
+// setUpMount init 挂载点
+func setUpMount() error {
+	// 获取当前路径
+	pwd, err := os.Getwd()
+	if err != nil {
+		logrus.Errorf("get current location error: %v", err)
+		return err
+	}
+	logrus.Infof("current location: %v", pwd)
+
+	/*
+		mount 命令的 flags参数可以设置选项以控制挂载行为
+		MS_NOEXEC：禁止在该文件系统上执行程序
+		MS_NOSUID: 禁止在该文件系统上运行 setuid 或 setgid 程序
+		MS_NODEV: 禁止在该文件系统上访问设备文件
+	*/
+	defaultMountFlags := syscall.MS_NOEXEC | syscall.MS_NOSUID | syscall.MS_NODEV
+
+	// mount, 将默认文件系统类型的空文件系统挂载到根目录
+	if err := syscall.Mount("", "/", "", syscall.MS_PRIVATE|syscall.MS_REC, ""); err != nil {
+		logrus.Errorf("mount / fails: %v", err)
+		return err
+	}
+
+	if err := pivotRoot(pwd); err != nil {
+		logrus.Errorf("pivot root fails: %v", err)
+		return err
+	}
+
+	// mount proc, 将proc文件系统类型的proc文件系统挂载到/proc目录
+	err = syscall.Mount("proc", "/proc", "proc", uintptr(defaultMountFlags), "")
+	if err != nil {
+		logrus.Errorf("mount /proc fails: %v", err)
+	}
+
+	// tmpfs 是一种基于内存的文件系统，用 RAM 或 swap 分区来存储, 提供临时设备文件存储
+	if err := syscall.Mount("tmpfs", "/dev", "tmpfs", syscall.MS_NOSUID|syscall.MS_STRICTATIME, "mode=755"); err != nil {
+		logrus.Errorf("mount /dev failed: %v", err)
+		return err
+	}
+	return nil
+}
+
+// pivotRoot 通过pivot_root系统调用切换当前的root文件系统
+/*
+# 初始状态
+宿主机根 (/)
+└── 容器root目录 (/var/lib/minidocker/rootfs)
+
+# 执行绑定挂载后
+宿主机根 (/)
+└── 容器root目录 [独立挂载点] (/var/lib/minidocker/rootfs)
+
+# 执行pivot_root后
+新根 (容器root目录)
+└── .pivot_root (挂载旧根)
+
+# 清理后
+新根完全独立，旧根卸载
+*/
+func pivotRoot(root string) error {
+	// 检查路径是否存在
+	if _, err := os.Stat(root); os.IsNotExist(err) {
+		return fmt.Errorf("路径 %s 不存在", root)
+	}
+
+	// bind mount 绑定挂载将相同的内容换一个挂载点，通过 bind mount将 root 重新挂载一次，即创建一个新的挂载点副本，使当前root 的老root和新root不在同一个文件系统下
+	if err := syscall.Mount(root, root, "bind", syscall.MS_BIND|syscall.MS_REC, ""); err != nil {
+		return fmt.Errorf("mount rootfs to itsellf error: %v", err)
+	}
+	if b, _ := isMountPoint(root); !b {
+		return fmt.Errorf("%s 不是一个挂载点", root)
+	}
+
+	// create 'rootfs/.pivot_root' to store old_root
+	pivotDir := filepath.Join(root, ".pivot_root")
+	logrus.Infof("pivotDir: %v", pivotDir)
+	if err := os.Mkdir(pivotDir, 0777); err != nil {
+		return fmt.Errorf("make pivotDir fails: %v", err)
+	}
+
+	// pivot_root 改变根文件系统到新的rootfs，老的rootfs现挂载在rootfs/.pivot_root上
+	if err := syscall.PivotRoot(root, pivotDir); err != nil {
+		return fmt.Errorf("pivot_root: %v", err)
+	}
+	// change current work dir to root dir, make the after operate base on new rootfs
+	if err := syscall.Chdir("/"); err != nil {
+		return fmt.Errorf("chdir: %v", err)
+	}
+
+	pivotDir = filepath.Join("/", ".pivot_root")
+	// umount rootfs/.rootfs_root
+	if err := syscall.Unmount(pivotDir, syscall.MNT_DETACH); err != nil {
+		return fmt.Errorf("unmount pivot_root dir: %v", err)
+	}
+	// 删除临时文件夹
+	return os.Remove(pivotDir)
 }
 
 func readCommand() []string {

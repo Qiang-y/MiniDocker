@@ -30,6 +30,7 @@ func NewProcess(tty bool) (*exec.Cmd, *os.File) {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 	}
+	cmd.Dir = "/root/busybox"
 
 	// 传递Pipe
 	cmd.ExtraFiles = []*os.File{readPipe}

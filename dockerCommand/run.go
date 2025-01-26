@@ -13,7 +13,7 @@ import (
 func Run(tty bool, containerCmd []string, res *subsystem.ResourceConfig) {
 	// `docker init <containerCmd>` 创建隔离了namespace的新进程, 返回的写通道口用于传容器命令
 	initProcess, writePipe := container.NewProcess(tty)
-
+	logrus.Infof("parent pid: %v", os.Getpid())
 	// start the init process
 	if err := initProcess.Start(); err != nil {
 		logrus.Error(err)
