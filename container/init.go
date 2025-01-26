@@ -73,7 +73,7 @@ func setUpMount() error {
 	*/
 	defaultMountFlags := syscall.MS_NOEXEC | syscall.MS_NOSUID | syscall.MS_NODEV
 
-	// mount, 将默认文件系统类型的空文件系统挂载到根目录
+	// mount, 将挂载命名空间的传播模式设置为 MS_PRIVATE，阻止挂载事件传播到宿主机
 	if err := syscall.Mount("", "/", "", syscall.MS_PRIVATE|syscall.MS_REC, ""); err != nil {
 		logrus.Errorf("mount / fails: %v", err)
 		return err
