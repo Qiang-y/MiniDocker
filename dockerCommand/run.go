@@ -30,7 +30,7 @@ func Run(tty bool, containerCmd []string, res *subsystem.ResourceConfig) {
 
 	// 等待进程运行完毕
 	if err := initProcess.Wait(); err != nil {
-		return
+		//return
 	}
 
 	// 容器结束运行后清理资源

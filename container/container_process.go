@@ -1,9 +1,11 @@
 package container
 
 import (
+	"fmt"
 	"github.com/sirupsen/logrus"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"syscall"
 )
 
@@ -77,14 +79,28 @@ func CreateWriteLayer(rootURL string) {
 }
 
 // CreateMountPoint 新建 mnt 文件夹作为挂载点，并将 writeLayer 目录和 busybox 目录 mount 到 mnt 目录下
+// ubuntu22.04 内核不支持AUFS，使用OverLay代替
 func CreateMountPoint(rootURL string, mntURL string) {
 	// 创建mnt文件夹作为挂载点
 	if err := os.Mkdir(mntURL, 0777); err != nil {
 		logrus.Errorf("Mkdir dir %v fails: %v", mntURL, err)
 	}
+
+	// 创建临时工作文件夹
+	workURL := rootURL + "tmpWork"
+	if err := os.Mkdir(workURL, 0777); err != nil {
+		logrus.Errorf("Mkdir dir %v fails: %v", workURL, err)
+	}
+
 	// 将writeLayer目录和busybox目录mount到mnt目录下
-	dirs := "dirs=" + rootURL + "writeLayer:" + rootURL + "busybox"
-	cmd := exec.Command("mount", "-t", "aufs", "-o", dirs, "none", mntURL)
+	// 改用OverLay
+	dirs := fmt.Sprintf(
+		"lowerdir=%s,upperdir=%s,workdir=%s",
+		filepath.Join(rootURL, "busybox"),
+		filepath.Join(rootURL, "writeLayer"),
+		workURL,
+	)
+	cmd := exec.Command("mount", "-t", "overlay", "-o", dirs, "none", mntURL)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	// 启动命令并阻塞等待
@@ -95,7 +111,7 @@ func CreateMountPoint(rootURL string, mntURL string) {
 
 // DeleteWorkSpace Docker 删除容器时将容器对应的writeLayer和Container-initLayer删除，
 // 从而保留镜像所有内容，
-// 简化操作，在容器退出时便删除writeLayer
+// 简化操作，在容器退出时便删除writeLayer和work
 func DeleteWorkSpace(rootURL string, mntURL string) {
 	DeleteMountPoint(mntURL)
 	DeleteWriteLayer(rootURL)
@@ -103,11 +119,12 @@ func DeleteWorkSpace(rootURL string, mntURL string) {
 
 // DeleteMountPoint unmount mnt目录，后删除mnt目录
 func DeleteMountPoint(mntURL string) {
-	cmd := exec.Command("unmount", mntURL)
+	cmd := exec.Command("umount", mntURL)
+	logrus.Infof("mntURL: %v", mntURL)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	if err := cmd.Run; err != nil {
-		logrus.Errorf("unmount mnt fails: %v", err)
+	if err := cmd.Run(); err != nil {
+		logrus.Errorf("umount mnt fails: %v", err)
 	}
 	// delete mnt/
 	if err := os.RemoveAll(mntURL); err != nil {
@@ -120,5 +137,9 @@ func DeleteWriteLayer(rootURL string) {
 	writeURL := rootURL + "writeLayer/"
 	if err := os.RemoveAll(writeURL); err != nil {
 		logrus.Errorf("remove writeLayer dir: %v fails: %v", writeURL, err)
+	}
+	workURL := rootURL + "tmpWork/"
+	if err := os.RemoveAll(workURL); err != nil {
+		logrus.Errorf("remove tmpWork dir: %v fails: %v", workURL, err)
 	}
 }

@@ -116,11 +116,6 @@ func setUpMount() error {
 新根完全独立，旧根卸载
 */
 func pivotRoot(root string) error {
-	// 检查路径是否存在
-	if b, _ := PathExists(root); b {
-		return fmt.Errorf("路径 %s 不存在", root)
-	}
-
 	// bind mount 绑定挂载将相同的内容换一个挂载点，通过 bind mount将 root 重新挂载一次，即创建一个新的挂载点副本，使当前root 的老root和新root不在同一个文件系统下
 	if err := syscall.Mount(root, root, "bind", syscall.MS_BIND|syscall.MS_REC, ""); err != nil {
 		return fmt.Errorf("mount rootfs to itsellf error: %v", err)
