@@ -67,3 +67,15 @@ func verifyMountNamespace() error {
 	logrus.Printf("挂载命名空间已隔离: %s (子进程) vs %s (父进程)", selfMountNs, parentMountNs)
 	return nil
 }
+
+// PathExists 判断文件路径是否存在
+func PathExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
+}

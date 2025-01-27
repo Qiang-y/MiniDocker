@@ -30,9 +30,95 @@ func NewProcess(tty bool) (*exec.Cmd, *os.File) {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 	}
-	cmd.Dir = "/root/busybox"
 
 	// 传递Pipe
 	cmd.ExtraFiles = []*os.File{readPipe}
+	mntURL := "/root/mnt/"
+	rootURL := "/root/"
+	NewWorkSpace(rootURL, mntURL)
+	cmd.Dir = mntURL
+
 	return cmd, writePipe
+}
+
+// NewWorkSpace 创建容器文件系统
+func NewWorkSpace(rootURL string, mntURL string) {
+	CreateReadOnlyLayer(rootURL)
+	CreateWriteLayer(rootURL)
+	CreateMountPoint(rootURL, mntURL)
+}
+
+// CreateReadOnlyLayer 新建 busybox 文件夹，将 busybox.tar 解压到 busybox 目录下，作为容器的只读层
+func CreateReadOnlyLayer(rootURL string) {
+	busyboxURL := rootURL + "busybox/"
+	busyboxTarURL := rootURL + "busybox.tar"
+	exist, err := PathExists(busyboxURL)
+	if err != nil {
+		logrus.Infof("Fail to judge whether dir %v exists: %v", exist, err)
+	}
+	if exist == false {
+		// 新建 busybox 目录
+		if err := os.Mkdir(busyboxURL, 0777); err != nil {
+			logrus.Errorf("Mkdir dir %v fails: %v", busyboxURL, err)
+		}
+		// 解压 busybox.tar
+		if _, err := exec.Command("tar", "-xvf", busyboxTarURL, "-C", busyboxURL).CombinedOutput(); err != nil {
+			logrus.Errorf("unTar dit %v fails: %v", busyboxURL, err)
+		}
+	}
+}
+
+// CreateWriteLayer 创建 writeLayer 文件夹作为容器 唯一 可写层
+func CreateWriteLayer(rootURL string) {
+	writeURL := rootURL + "writeLayer/"
+	if err := os.Mkdir(writeURL, 0777); err != nil {
+		logrus.Errorf("Mkdir dir %v fails: %v", writeURL, err)
+	}
+}
+
+// CreateMountPoint 新建 mnt 文件夹作为挂载点，并将 writeLayer 目录和 busybox 目录 mount 到 mnt 目录下
+func CreateMountPoint(rootURL string, mntURL string) {
+	// 创建mnt文件夹作为挂载点
+	if err := os.Mkdir(mntURL, 0777); err != nil {
+		logrus.Errorf("Mkdir dir %v fails: %v", mntURL, err)
+	}
+	// 将writeLayer目录和busybox目录mount到mnt目录下
+	dirs := "dirs=" + rootURL + "writeLayer:" + rootURL + "busybox"
+	cmd := exec.Command("mount", "-t", "aufs", "-o", dirs, "none", mntURL)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	// 启动命令并阻塞等待
+	if err := cmd.Run(); err != nil {
+		logrus.Errorf("%v", err)
+	}
+}
+
+// DeleteWorkSpace Docker 删除容器时将容器对应的writeLayer和Container-initLayer删除，
+// 从而保留镜像所有内容，
+// 简化操作，在容器退出时便删除writeLayer
+func DeleteWorkSpace(rootURL string, mntURL string) {
+	DeleteMountPoint(mntURL)
+	DeleteWriteLayer(rootURL)
+}
+
+// DeleteMountPoint unmount mnt目录，后删除mnt目录
+func DeleteMountPoint(mntURL string) {
+	cmd := exec.Command("unmount", mntURL)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run; err != nil {
+		logrus.Errorf("unmount mnt fails: %v", err)
+	}
+	// delete mnt/
+	if err := os.RemoveAll(mntURL); err != nil {
+		logrus.Errorf("remove mnt dir: %v fails: %v", mntURL, err)
+	}
+}
+
+// DeleteWriteLayer 删除writeLayer目录，即抹去容器对文件系统的更改
+func DeleteWriteLayer(rootURL string) {
+	writeURL := rootURL + "writeLayer/"
+	if err := os.RemoveAll(writeURL); err != nil {
+		logrus.Errorf("remove writeLayer dir: %v fails: %v", writeURL, err)
+	}
 }

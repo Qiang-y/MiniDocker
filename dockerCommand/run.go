@@ -32,7 +32,13 @@ func Run(tty bool, containerCmd []string, res *subsystem.ResourceConfig) {
 	if err := initProcess.Wait(); err != nil {
 		return
 	}
-	os.Exit(-1)
+
+	// 容器结束运行后清理资源
+	mntURl := "/root/mnt/"
+	rootURL := "/root/"
+	container.DeleteWorkSpace(rootURL, mntURl)
+
+	os.Exit(0)
 }
 
 // 通过管道发送容器的起始命令，并关闭通道

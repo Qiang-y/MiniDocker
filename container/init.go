@@ -117,7 +117,7 @@ func setUpMount() error {
 */
 func pivotRoot(root string) error {
 	// 检查路径是否存在
-	if _, err := os.Stat(root); os.IsNotExist(err) {
+	if b, _ := PathExists(root); b {
 		return fmt.Errorf("路径 %s 不存在", root)
 	}
 
