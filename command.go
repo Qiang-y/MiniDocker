@@ -30,6 +30,10 @@ var runCommand = cli.Command{
 			Name:  "cpushare",
 			Usage: "limit the cpu share",
 		},
+		&cli.StringFlag{
+			Name:  "v",
+			Usage: "volume",
+		},
 	},
 	/*
 		run 命令执行的函数
@@ -57,8 +61,11 @@ var runCommand = cli.Command{
 			CPUSet:      context.String("cpu"),
 		}
 
+		// 传递volume
+		volume := context.String("v")
+
 		// 启动函数
-		dockerCommand.Run(tty, containerCmd, &resourceConfig)
+		dockerCommand.Run(tty, containerCmd, &resourceConfig, volume)
 
 		return nil
 	},
