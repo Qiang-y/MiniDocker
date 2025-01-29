@@ -5,6 +5,7 @@ import (
 	"MiniDocker/container"
 	"MiniDocker/dockerCommand"
 	"errors"
+	"fmt"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -83,5 +84,19 @@ var initCommand = cli.Command{
 	Action: func(context *cli.Context) error {
 		logrus.Infof("Start initating...")
 		return container.InitProcess()
+	},
+}
+
+// 打包容器形成镜像命令
+var commitCommand = cli.Command{
+	Name:  "commit",
+	Usage: "commit a container into image",
+	Action: func(context *cli.Context) error {
+		if context.Args().Len() < 1 {
+			return fmt.Errorf("missing container name, use: commit [imageName]")
+		}
+		imageName := context.Args().Get(0)
+		commitContainer(imageName)
+		return nil
 	},
 }
