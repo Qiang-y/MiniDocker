@@ -32,7 +32,7 @@ var runCommand = cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "v",
-			Usage: "volume",
+			Usage: "set volume, user: -v [volumeDir]:[containerVolumeDir]",
 		},
 	},
 	/*
