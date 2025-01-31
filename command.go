@@ -131,3 +131,16 @@ var listCommand = cli.Command{
 		return nil
 	},
 }
+
+var logCommand = cli.Command{
+	Name:  "logs",
+	Usage: "print logs of container",
+	Action: func(context *cli.Context) error {
+		if context.Args().Len() < 1 {
+			return fmt.Errorf("please input container name")
+		}
+		containerName := context.Args().Get(0)
+		dockerCommand.LogContainer(containerName)
+		return nil
+	},
+}

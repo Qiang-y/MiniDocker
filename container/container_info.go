@@ -18,6 +18,7 @@ var (
 	EXIT                = "exited"
 	DefaultInfoLocation = "/var/run/minidocker/%s/"
 	ConfigName          = "config.json"
+	ContainerLogFile    = "container.log"
 )
 
 // ContainerInfo 容器的基本信息, 默认存储在'/var/run/minidocker/${containerName}/config.json'
