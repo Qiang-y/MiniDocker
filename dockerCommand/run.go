@@ -10,13 +10,20 @@ import (
 )
 
 // Run `docker run` 时真正调用的函数
-func Run(tty bool, containerCmd []string, res *subsystem.ResourceConfig, volume string) {
+func Run(tty bool, containerCmd []string, res *subsystem.ResourceConfig, volume string, containerName string) {
 	// `docker init <containerCmd>` 创建隔离了namespace的新进程, 返回的写通道口用于传容器命令
 	initProcess, writePipe := container.NewProcess(tty, volume)
 	logrus.Infof("parent pid: %v", os.Getpid())
 	// start the init process
 	if err := initProcess.Start(); err != nil {
 		logrus.Error(err)
+	}
+
+	// 记录容器信息
+	containerName, err := container.RecordContainerInfo(initProcess.Process.Pid, containerCmd, containerName)
+	if err != nil {
+		logrus.Errorf("record container info fails: %v", err)
+		return
 	}
 
 	// 创建 cgroupManager 控制所有 hierarchies层级 的资源配置
@@ -28,9 +35,9 @@ func Run(tty bool, containerCmd []string, res *subsystem.ResourceConfig, volume 
 	// 发生容器起始命令
 	sendInitCommand(containerCmd, writePipe)
 
-	// 等待进程运行完毕
-	if err := initProcess.Wait(); err != nil {
-		//return
+	// 等待进程运行完毕(-it)
+	if tty {
+		initProcess.Wait()
 	}
 
 	// 容器结束运行后清理资源

@@ -14,26 +14,40 @@ var runCommand = cli.Command{
 	Name:  "run",
 	Usage: "Create a container | miniDocker run -it [command]",
 	Flags: []cli.Flag{
-		// 整合i和t
+		// 整合i和t, 交互式运行
 		&cli.BoolFlag{
 			Name:  "it",
 			Usage: "open an interactive tty(pseudo terminal)", // 打开交互式tty
 		},
+		// 后台运行
+		&cli.BoolFlag{
+			Name:  "d",
+			Usage: "detach container",
+		},
+		// 限制内存占用
 		&cli.StringFlag{
 			Name:  "m",
 			Usage: "limit the memory",
 		},
+		// 限制CPU核心数
 		&cli.StringFlag{
 			Name:  "cpu",
 			Usage: "limit the cpu amount",
 		},
+		// 限制CPU时间片权重
 		&cli.StringFlag{
 			Name:  "cpushare",
 			Usage: "limit the cpu share",
 		},
+		// 挂载数据卷
 		&cli.StringFlag{
 			Name:  "v",
 			Usage: "set volume, user: -v [volumeDir]:[containerVolumeDir]",
+		},
+		// 指定容器名字
+		&cli.StringFlag{
+			Name:  "name",
+			Usage: "set container name",
 		},
 	},
 	/*
@@ -52,8 +66,14 @@ var runCommand = cli.Command{
 			containerCmd[index] = cmd
 		}
 
-		// check "-it"
-		tty := context.Bool("it")
+		// check "-it" or "-d"
+		createTTY := context.Bool("it")
+		detach := context.Bool("d")
+		// detach和createTTY不能共存
+		if createTTY && detach {
+			return fmt.Errorf("it and d paramter can not both provided")
+		}
+		logrus.Infof("createTTY %v", createTTY)
 
 		// 得到资源配置
 		resourceConfig := subsystem.ResourceConfig{
@@ -64,9 +84,10 @@ var runCommand = cli.Command{
 
 		// 传递volume
 		volume := context.String("v")
-
+		// 容器名
+		containerName := context.String("name")
 		// 启动函数
-		dockerCommand.Run(tty, containerCmd, &resourceConfig, volume)
+		dockerCommand.Run(createTTY, containerCmd, &resourceConfig, volume, containerName)
 
 		return nil
 	},
@@ -96,7 +117,17 @@ var commitCommand = cli.Command{
 			return fmt.Errorf("missing container name, use: commit [imageName]")
 		}
 		imageName := context.Args().Get(0)
-		commitContainer(imageName)
+		dockerCommand.CommitContainer(imageName)
+		return nil
+	},
+}
+
+// 查看所有容器信息命令
+var listCommand = cli.Command{
+	Name:  "ps",
+	Usage: "list all the containers",
+	Action: func(context *cli.Context) error {
+		dockerCommand.ListContainers()
 		return nil
 	},
 }
