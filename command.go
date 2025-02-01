@@ -171,3 +171,17 @@ var execCommand = cli.Command{
 		return nil
 	},
 }
+
+// 停止容器命令
+var stopCommand = cli.Command{
+	Name:  "stop",
+	Usage: "stop a container",
+	Action: func(context *cli.Context) error {
+		if context.Args().Len() < 1 {
+			return fmt.Errorf("missing container name")
+		}
+		containerName := context.Args().Get(0)
+		dockerCommand.StopContainer(containerName)
+		return nil
+	},
+}
