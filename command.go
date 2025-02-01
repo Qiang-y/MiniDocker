@@ -6,6 +6,8 @@ import (
 	"MiniDocker/dockerCommand"
 	"errors"
 	"fmt"
+	"os"
+
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -132,6 +134,7 @@ var listCommand = cli.Command{
 	},
 }
 
+// 查看指定容器的日志命令
 var logCommand = cli.Command{
 	Name:  "logs",
 	Usage: "print logs of container",
@@ -141,6 +144,30 @@ var logCommand = cli.Command{
 		}
 		containerName := context.Args().Get(0)
 		dockerCommand.LogContainer(containerName)
+		return nil
+	},
+}
+
+// exec，进入容器命令, mydocker exec {containerName} {containerCmd}
+var execCommand = cli.Command{
+	Name:  "exec",
+	Usage: "exec a command into container",
+	Action: func(context *cli.Context) error {
+		// for callback, 若环境变量不为空即第二次执行，直接返回以免重复调用
+		if os.Getenv(dockerCommand.ENV_EXEC_PID) != "" {
+			logrus.Infof("pid callback pid %v", os.Getpid())
+			return nil
+		}
+		if context.Args().Len() < 2 {
+			return fmt.Errorf("missing container name or command")
+		}
+		containerName := context.Args().Get(0)
+		var containerCmds []string
+		for _, arg := range context.Args().Tail() {
+			containerCmds = append(containerCmds, arg)
+		}
+
+		dockerCommand.ExecContainer(containerName, containerCmds)
 		return nil
 	},
 }

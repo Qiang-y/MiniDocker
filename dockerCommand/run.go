@@ -38,12 +38,12 @@ func Run(tty bool, containerCmd []string, res *subsystem.ResourceConfig, volume 
 	// 等待进程运行完毕(-it)
 	if tty {
 		initProcess.Wait()
-	}
 
-	// 容器结束运行后清理资源
-	mntURl := "/root/mnt/"
-	rootURL := "/root/"
-	container.DeleteWorkSpace(rootURL, mntURl, volume)
+		// 容器结束运行后清理资源
+		mntURl := "/root/mnt/"
+		rootURL := "/root/"
+		container.DeleteWorkSpace(rootURL, mntURl, volume)
+	}
 
 	os.Exit(0)
 }
