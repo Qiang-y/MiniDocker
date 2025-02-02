@@ -53,7 +53,7 @@ func main() {
 		// 将容器进程添加进cgroup, 0644 : 所有者读写权限，同组和其他用户只读
 		os.WriteFile(path.Join(cgroupMemoryHierarchyMount, "testmemorylimit", "tasks"), []byte(strconv.Itoa(cmd.Process.Pid)), 0644)
 		// 限制 cgroup 进程使用内存上限
-		os.WriteFile(path.Join(cgroupMemoryHierarchyMount, "testmemorylimit", "memory.linit_in_bytes"), []byte("100m"), 0644)
+		os.WriteFile(path.Join(cgroupMemoryHierarchyMount, "testmemorylimit", "memory.limit_in_bytes"), []byte("100m"), 0644)
 
 		cmd.Process.Wait() // 等待子进程完成
 	}

@@ -14,7 +14,7 @@ import (
 
 var runCommand = cli.Command{
 	Name:  "run",
-	Usage: "Create a container | miniDocker run -it [command]",
+	Usage: "Create a container | miniDocker run [args] [image] [command]",
 	Flags: []cli.Flag{
 		// 整合i和t, 交互式运行
 		&cli.BoolFlag{
@@ -88,8 +88,13 @@ var runCommand = cli.Command{
 		volume := context.String("v")
 		// 容器名
 		containerName := context.String("name")
+
+		// get image name
+		imageName := containerCmd[0]
+		containerCmd = containerCmd[1:]
+
 		// 启动函数
-		dockerCommand.Run(createTTY, containerCmd, &resourceConfig, volume, containerName)
+		dockerCommand.Run(createTTY, containerCmd, &resourceConfig, volume, containerName, imageName)
 
 		return nil
 	},
@@ -182,6 +187,20 @@ var stopCommand = cli.Command{
 		}
 		containerName := context.Args().Get(0)
 		dockerCommand.StopContainer(containerName)
+		return nil
+	},
+}
+
+// 删除容器命令
+var removeCommand = cli.Command{
+	Name:  "rm",
+	Usage: "remove a container",
+	Action: func(context *cli.Context) error {
+		if context.Args().Len() < 1 {
+			return fmt.Errorf("missing container name")
+		}
+		containerName := context.Args().Get(0)
+		dockerCommand.RemoveContainer(containerName)
 		return nil
 	},
 }

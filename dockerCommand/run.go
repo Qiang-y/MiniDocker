@@ -10,9 +10,9 @@ import (
 )
 
 // Run `docker run` 时真正调用的函数
-func Run(tty bool, containerCmd []string, res *subsystem.ResourceConfig, volume string, containerName string) {
+func Run(tty bool, containerCmd []string, res *subsystem.ResourceConfig, volume string, containerName string, imageName string) {
 	// `docker init <containerCmd>` 创建隔离了namespace的新进程, 返回的写通道口用于传容器命令
-	initProcess, writePipe := container.NewProcess(tty, volume, containerName)
+	initProcess, writePipe := container.NewProcess(tty, volume, containerName, imageName)
 	logrus.Infof("parent pid: %v", os.Getpid())
 	// start the init process
 	if err := initProcess.Start(); err != nil {
@@ -20,7 +20,7 @@ func Run(tty bool, containerCmd []string, res *subsystem.ResourceConfig, volume 
 	}
 
 	// 记录容器信息
-	containerName, err := container.RecordContainerInfo(initProcess.Process.Pid, containerCmd, containerName)
+	containerName, err := container.RecordContainerInfo(initProcess.Process.Pid, containerCmd, containerName, volume)
 	if err != nil {
 		logrus.Errorf("record container info fails: %v", err)
 		return
@@ -40,9 +40,10 @@ func Run(tty bool, containerCmd []string, res *subsystem.ResourceConfig, volume 
 		initProcess.Wait()
 
 		// 容器结束运行后清理资源
-		mntURl := "/root/mnt/"
-		rootURL := "/root/"
-		container.DeleteWorkSpace(rootURL, mntURl, volume)
+		//mntURl := "/root/mnt/"
+		//rootURL := "/root/"
+		container.DeleteContainerInfo(containerName)
+		container.DeleteWorkSpace(volume, containerName)
 	}
 
 	os.Exit(0)

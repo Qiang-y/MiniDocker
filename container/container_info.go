@@ -19,6 +19,10 @@ var (
 	DefaultInfoLocation = "/var/run/minidocker/%s/"
 	ConfigName          = "config.json"
 	ContainerLogFile    = "container.log"
+	RootUrl             = "/root/"
+	MntUrl              = "/root/mnt/%s"
+	WriteLayerUrl       = "/root/writeLayer/%s"
+	WorkLayerUrl        = "/root/.tmpWork/%s"
 )
 
 // ContainerInfo 容器的基本信息, 默认存储在'/var/run/minidocker/${containerName}/config.json'
@@ -29,11 +33,12 @@ type ContainerInfo struct {
 	Command     string `json:"command"`     // 容器内init进程运行的命令
 	CreatedTime string `json:"createdTime"` // 创建时间
 	Status      string `json:"status"`      // 容器状态
+	Volume      string `json:"volume"`      // 挂载数据卷
 }
 
 // RecordContainerInfo 记录容器信息
 // @return 容器名 或 错误信息
-func RecordContainerInfo(containerPID int, containerCmd []string, containerName string) (string, error) {
+func RecordContainerInfo(containerPID int, containerCmd []string, containerName string, volume string) (string, error) {
 	// 生成10位数字的容器ID
 	id := randStringBytes(10)
 	// 记录当前容器创建时间和初始命令
@@ -51,6 +56,7 @@ func RecordContainerInfo(containerPID int, containerCmd []string, containerName 
 		Command:     command,
 		CreatedTime: createTime,
 		Status:      RUNNING,
+		Volume:      volume,
 	}
 	// 将容器信息转为json字符串
 	jsonByte, err := json.Marshal(containerInfo)
