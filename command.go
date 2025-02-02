@@ -118,13 +118,14 @@ var initCommand = cli.Command{
 // 打包容器形成镜像命令
 var commitCommand = cli.Command{
 	Name:  "commit",
-	Usage: "commit a container into image",
+	Usage: "commit a container into image; commit [containerName] [imageName]",
 	Action: func(context *cli.Context) error {
 		if context.Args().Len() < 1 {
 			return fmt.Errorf("missing container name, use: commit [imageName]")
 		}
-		imageName := context.Args().Get(0)
-		dockerCommand.CommitContainer(imageName)
+		containerName := context.Args().Get(0)
+		imageName := context.Args().Get(1)
+		dockerCommand.CommitContainer(containerName, imageName)
 		return nil
 	},
 }

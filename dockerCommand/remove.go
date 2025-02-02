@@ -25,4 +25,5 @@ func RemoveContainer(containerName string) {
 	if err := os.RemoveAll(infoDir); err != nil {
 		logrus.Errorf("remove file %s fails: %v", infoDir, err)
 	}
+	container.DeleteWorkSpace(containerInfo.Volume, containerName)
 }

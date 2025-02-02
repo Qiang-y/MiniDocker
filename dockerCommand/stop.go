@@ -26,8 +26,9 @@ func StopContainer(containerName string) {
 	}
 	// 通过kill系统调用发送SIGTERM型号给容器主进程，使其优雅退出，从而停止容器
 	if err := syscall.Kill(pidInt, syscall.SIGTERM); err != nil {
-		logrus.Errorf("stop container %v fails: %v", containerName, err)
-		return
+		logrus.Warnf("stop container %v fails: %v", containerName, err)
+		// 有时候进程因为别的什么原因已经被kill了
+		//return
 	}
 	// 至此容器进程已被kill掉，接下来修改容器Info信息
 	containerInfo, err := getContainerInfoByName(containerName)
