@@ -51,6 +51,11 @@ var runCommand = cli.Command{
 			Name:  "name",
 			Usage: "set container name",
 		},
+		// 指定环境变量, 可指定多个
+		&cli.StringSliceFlag{
+			Name:  "e",
+			Usage: "set environments",
+		},
 	},
 	/*
 		run 命令执行的函数
@@ -93,8 +98,11 @@ var runCommand = cli.Command{
 		imageName := containerCmd[0]
 		containerCmd = containerCmd[1:]
 
+		// get environments
+		envSlice := context.StringSlice("e")
+
 		// 启动函数
-		dockerCommand.Run(createTTY, containerCmd, &resourceConfig, volume, containerName, imageName)
+		dockerCommand.Run(createTTY, containerCmd, &resourceConfig, volume, containerName, imageName, envSlice)
 
 		return nil
 	},

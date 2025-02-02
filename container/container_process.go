@@ -10,7 +10,7 @@ import (
 )
 
 // NewProcess 创建新容器进程并设置好隔离, 使用管道来传递多个命令行参数,read端传给容器进程，write端保留在父进程
-func NewProcess(tty bool, volume string, containerName string, imageName string) (*exec.Cmd, *os.File) {
+func NewProcess(tty bool, volume string, containerName string, imageName string, envSlice []string) (*exec.Cmd, *os.File) {
 	//args := []string{"init", containerCmd}
 	readPipe, writePipe, err := os.Pipe()
 	if err != nil {
@@ -49,6 +49,8 @@ func NewProcess(tty bool, volume string, containerName string, imageName string)
 
 	// 传递Pipe
 	cmd.ExtraFiles = []*os.File{readPipe}
+	// 传递环境变量
+	cmd.Env = append(os.Environ(), envSlice...)
 
 	NewWorkSpace(imageName, containerName, volume)
 	cmd.Dir = fmt.Sprintf(MntUrl, containerName)

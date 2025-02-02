@@ -7,7 +7,10 @@ import (
 	"github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
+	"strings"
 )
+
+const ENV_PATH = "/proc/%s/environ"
 
 // 根据容器名得到对应容器的PID
 func getContainerPidByName(containerName string) (string, error) {
@@ -43,4 +46,18 @@ func getContainerInfoByName(containerName string) (*container.ContainerInfo, err
 		return nil, err
 	}
 	return containerInfo, nil
+}
+
+// 通过pid得到对应进程的环境变量
+func getEnvByPid(pid string) []string {
+	// 进程环境变量存放位置 /proc/{PID}/environ
+	path := fmt.Sprintf(ENV_PATH, pid)
+	contentBytes, err := os.ReadFile(path)
+	if err != nil {
+		logrus.Errorf("read file: %v fails: %v", path, err)
+		return nil
+	}
+	// 多个环境变量的分隔符是 \u0000
+	envs := strings.Split(string(contentBytes), "\u0000")
+	return envs
 }
