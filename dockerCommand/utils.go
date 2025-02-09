@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/exp/rand"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 const ENV_PATH = "/proc/%s/environ"
@@ -60,4 +62,15 @@ func getEnvByPid(pid string) []string {
 	// 多个环境变量的分隔符是 \u0000
 	envs := strings.Split(string(contentBytes), "\u0000")
 	return envs
+}
+
+// 生成容器的唯一ID标识
+func randStringBytes(n int) string {
+	letterBytes := "1234567890"
+	rand.Seed(uint64(time.Now().UnixNano()))
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
 }
